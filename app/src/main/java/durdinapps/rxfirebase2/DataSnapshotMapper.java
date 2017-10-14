@@ -35,6 +35,10 @@ public abstract class DataSnapshotMapper<T, U> implements Function<T, U> {
       return new TypedMapDataSnapshotMapper<>(clazz);
    }
 
+   public static <U> DataSnapshotMapper<DataSnapshot, LinkedHashMap<String, U>> mapOf(Class<U> clazz, Function<DataSnapshot, U> mapper) {
+      return new TypedMapDataSnapshotMapper<>(clazz, mapper);
+   }
+
    public static <U> DataSnapshotMapper<DataSnapshot, U> of(GenericTypeIndicator<U> genericTypeIndicator) {
       return new GenericTypedDataSnapshotMapper<U>(genericTypeIndicator);
    }
@@ -43,13 +47,26 @@ public abstract class DataSnapshotMapper<T, U> implements Function<T, U> {
       return new ChildEventDataSnapshotMapper<U>(clazz);
    }
 
-   private static <U> U getDataSnapshotTypedValue(DataSnapshot dataSnapshot, Class<U> clazz) {
-      U value = dataSnapshot.getValue(clazz);
-      if (value == null) {
-         throw Exceptions.propagate(new RxFirebaseDataCastException(
-            "unable to cast firebase data response to " + clazz.getSimpleName()));
-      }
-      return value;
+   private static <U> U getDataSnapshotTypedValue(DataSnapshot dataSnapshot, Class<U> clazz, Function<DataSnapshot, U> mapper) {
+     try {
+        U value = mapper.apply(dataSnapshot);
+        if (value == null) {
+           throw Exceptions.propagate(new RxFirebaseDataCastException(
+               "unable to cast firebase data response to " + clazz.getSimpleName()));
+        }
+        return value;
+     } catch (Exception e) {
+        throw Exceptions.propagate(e);
+     }
+   }
+
+   private static <U> U getDataSnapshotTypedValue(final DataSnapshot dataSnapshot, final Class<U> clazz) {
+     return getDataSnapshotTypedValue(dataSnapshot, clazz, new Function<DataSnapshot, U>() {
+        @Override
+        public U apply(@io.reactivex.annotations.NonNull DataSnapshot snapshot) throws Exception {
+          return dataSnapshot.getValue(clazz);
+        }
+     });
    }
 
    private static class TypedDataSnapshotMapper<U> extends DataSnapshotMapper<DataSnapshot, U> {
@@ -95,16 +112,27 @@ public abstract class DataSnapshotMapper<T, U> implements Function<T, U> {
    private static class TypedMapDataSnapshotMapper<U> extends DataSnapshotMapper<DataSnapshot, LinkedHashMap<String, U>> {
 
       private final Class<U> clazz;
+      private final Function<DataSnapshot, U> mapper;
+
+      TypedMapDataSnapshotMapper(final Class<U> clazz, Function<DataSnapshot, U> mapper) {
+         this.clazz = clazz;
+         this.mapper = mapper;
+      }
 
       TypedMapDataSnapshotMapper(final Class<U> clazz) {
-         this.clazz = clazz;
+         this(clazz, new Function<DataSnapshot, U>() {
+            @Override
+            public U apply(DataSnapshot dataSnapshot) {
+               return dataSnapshot.getValue(clazz);
+            }
+         });
       }
 
       @Override
       public LinkedHashMap<String, U> apply(final DataSnapshot dataSnapshot) {
          LinkedHashMap<String, U> items = new LinkedHashMap<>();
          for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
-            items.put(childSnapshot.getKey(), getDataSnapshotTypedValue(childSnapshot, clazz));
+            items.put(childSnapshot.getKey(), getDataSnapshotTypedValue(childSnapshot, clazz, mapper));
          }
          return items;
       }
