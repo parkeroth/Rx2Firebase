@@ -2,7 +2,6 @@ package durdinapps.rxfirebase2;
 
 import android.support.annotation.NonNull;
 
-import com.google.android.gms.common.data.DataBufferObserver;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
