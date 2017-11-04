@@ -398,6 +398,39 @@ public class RxFirebaseDatabaseTest {
               .dispose();
    }
 
+   @Test
+   public void testRemoveValueSuccess() throws InterruptedException {
+      TestObserver<Void> testObserver = RxFirebaseDatabase
+          .removeValue(databaseReference)
+          .test();
+
+      ArgumentCaptor<DatabaseReference.CompletionListener> argument =
+          ArgumentCaptor.forClass(DatabaseReference.CompletionListener.class);
+      verify(databaseReference).removeValue(argument.capture());
+      argument.getValue().onComplete(null, databaseReference);
+
+      testObserver.assertNoErrors()
+          .assertComplete()
+          .dispose();
+   }
+
+   @Test
+   public void testRemoveValueError() throws InterruptedException {
+      TestObserver<Void> testObserver = RxFirebaseDatabase
+          .removeValue(databaseReference)
+          .test();
+
+      ArgumentCaptor<DatabaseReference.CompletionListener> argument =
+          ArgumentCaptor.forClass(DatabaseReference.CompletionListener.class);
+      verify(databaseReference).removeValue(argument.capture());
+      argument.getValue().onComplete(
+          DatabaseError.fromException(new IllegalStateException()), databaseReference);
+
+      testObserver.assertError(RxFirebaseDataException.class)
+          .assertNotComplete()
+          .dispose();
+   }
+
    class ChildData {
       int id;
       String str;

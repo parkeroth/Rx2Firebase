@@ -2,6 +2,7 @@ package durdinapps.rxfirebase2;
 
 import android.support.annotation.NonNull;
 
+import com.google.android.gms.common.data.DataBufferObserver;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
@@ -485,5 +486,29 @@ public class RxFirebaseDatabase {
       @NonNull final Query query, @NonNull final Function<? super RxFirebaseChildEvent<DataSnapshot>,
       ? extends RxFirebaseChildEvent<T>> mapper) {
       return observeChildEvent(query, BackpressureStrategy.DROP).map(mapper);
+   }
+
+   /**
+    * Remove the value on the specified {@link DatabaseReference}.
+    *
+    * @param ref   reference represents a particular location in your database.
+    * @return a {@link Completable} which is complete when the remove value call finishes successfully.
+    */
+   public static Completable removeValue(@NonNull final DatabaseReference ref) {
+      return Completable.create(new CompletableOnSubscribe() {
+         @Override
+         public void subscribe(final @NonNull CompletableEmitter e) throws Exception {
+            ref.removeValue(new DatabaseReference.CompletionListener() {
+               @Override
+               public void onComplete(DatabaseError databaseError, DatabaseReference databaseReference) {
+                  if (databaseError == null) {
+                     e.onComplete();
+                  } else {
+                     e.onError(new RxFirebaseDataException(databaseError));
+                  }
+               }
+            });
+         }
+      });
    }
 }
